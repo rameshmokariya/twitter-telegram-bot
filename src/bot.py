@@ -56,6 +56,28 @@ from renderer import render_tweet_card
 from media import get_tweet_media
 import telegram as tg
 
+def load_env_file():
+    """Manually parse and load .env file if it exists on disk."""
+    env_path = Path(".env")
+    if env_path.exists():
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip()
+                    # Strip outer quotes if any
+                    for q in ("'", '"'):
+                        if v.startswith(q) and v.endswith(q):
+                            v = v[1:-1].strip()
+                    os.environ.setdefault(k, v)
+
+# Automatically load .env if present on Hostinger or local
+load_env_file()
+
 def clean_env_var(name: str, default: str = "") -> str:
     val = os.environ.get(name, default).strip()
     if len(val) >= 2:
