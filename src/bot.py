@@ -162,36 +162,27 @@ async def process_tweet(tweet, http: httpx.AsyncClient, api) -> bool:
 async def run_bot():
     patch_twscrape()
     
-    # 1. Pre-seed accounts.db with cookies and reset locks BEFORE instantiating the API!
-    import sqlite3 as _sq
-    cookies = os.environ.get('TW_COOKIES', '{}')
-    _conn = _sq.connect("accounts.db")
+    # 1. Instantiate twscrape API. This automatically triggers database creation and migrations,
+    # ensuring the database schema is 100% correct and up to date with twscrape!
+    api = API()
     
-    # Ensure the twscrape accounts table is created with correct schema
-    _conn.execute("""
-        CREATE TABLE IF NOT EXISTS accounts (
-            username TEXT PRIMARY KEY,
-            password TEXT,
-            email TEXT,
-            email_password TEXT,
-            active INTEGER DEFAULT 1,
-            cookies TEXT,
-            locks TEXT DEFAULT '{}',
-            last_used TEXT
-        )
-    """)
-    
-    # Insert or JUST update the account with active=1, cookies, and reset locks!
-    _conn.execute(
-        "INSERT OR REPLACE INTO accounts (username, password, email, email_password, active, cookies, locks) VALUES (?, ?, ?, ?, 1, ?, '{}')",
-        (TW_USERNAME, TW_PASSWORD, TW_EMAIL or None, TW_EMAIL_PASSWORD or None, cookies)
+    # 2. Safely add/update our authenticated account using twscrape's official pool methods.
+    # This automatically parses cookie strings, structures them correctly in the database,
+    # and prevents column/schema mismatches!
+    await api.pool.delete_accounts(TW_USERNAME)
+    await api.pool.add_account(
+        username=TW_USERNAME,
+        password=TW_PASSWORD,
+        email=TW_EMAIL or "",
+        email_password=TW_EMAIL_PASSWORD or "",
+        cookies=os.environ.get('TW_COOKIES', '{}')
     )
-    _conn.commit()
-    _conn.close()
-    log.info("Injected active cookies and reset locks for @%s — skipping login", TW_USERNAME)
-
-    # 2. NOW instantiate API so it loads the active, cookie-authenticated account correctly!
-    api  = API()
+    
+    # 3. Force the account to be marked active and reset all rate-limit locks
+    await api.pool.set_active(TW_USERNAME, True)
+    await api.pool.reset_locks()
+    log.info("Registered and activated @%s with session cookies, reset locks", TW_USERNAME)
+    
     conn = init_db()
 
     log.info("Loading tracked accounts: %s", TRACKED_ACCOUNTS)
