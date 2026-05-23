@@ -15,11 +15,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
-from twscrape import API, gather
-
-from renderer import render_tweet_card
-from media import get_tweet_media
-import telegram as tg
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -29,6 +24,7 @@ def patch_twscrape():
     try:
         import inspect
         import os
+        import importlib
         import twscrape.utils
 
         file_path = inspect.getfile(twscrape.utils)
@@ -45,8 +41,20 @@ def patch_twscrape():
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(content)
                 log.info("✓ twscrape package patched successfully!")
+                
+            # Double-safeguard: force Python to reload the patched file into memory right now
+            importlib.reload(twscrape.utils)
+            log.info("✓ twscrape.utils reloaded successfully in-memory!")
     except Exception as e:
         log.warning("Could not programmatically patch twscrape: %s", e)
+
+# Run patch immediately on boot before any imports!
+patch_twscrape()
+
+from twscrape import API, gather
+from renderer import render_tweet_card
+from media import get_tweet_media
+import telegram as tg
 
 def clean_env_var(name: str, default: str = "") -> str:
     val = os.environ.get(name, default).strip()
