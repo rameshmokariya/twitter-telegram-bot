@@ -246,8 +246,8 @@ async def run_bot():
 
                 log.info("Processing tweet %s from @%s", tid, account["username"])
                 ok = await process_tweet(tweet, http, api)
-                mark_sent(conn, tid)
                 if ok:
+                    mark_sent(conn, tid)
                     sent += 1
                     log.info("✓ Sent %s", tid)
                 else:

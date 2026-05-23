@@ -17,8 +17,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sent_tweets.db
-          key: sent-tweets-db-${{ github.run_id }}
-          restore-keys: sent-tweets-db-
+          key: sent-tweets-v2-${{ github.run_id }}
+          restore-keys: sent-tweets-v2-
 
       - uses: actions/setup-python@v5
         with:
