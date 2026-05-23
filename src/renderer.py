@@ -432,10 +432,13 @@ async def _fetch_image_b64(url: str, client: httpx.AsyncClient) -> tuple[str, st
             "referer": "https://x.com/"
         }
         r = await client.get(url, headers=headers, timeout=15, follow_redirects=True)
+        if r.status_code != 200:
+            print(f"[renderer] Image fetch failed for {url} with status {r.status_code}: {r.text[:200]}")
         r.raise_for_status()
         mime = r.headers.get("content-type", "image/jpeg").split(";")[0]
         return base64.b64encode(r.content).decode(), mime
-    except Exception:
+    except Exception as e:
+        print(f"[renderer] Image fetch exception for {url}: {e}")
         return "", "image/jpeg"
 
 
