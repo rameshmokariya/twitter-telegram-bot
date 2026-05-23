@@ -463,59 +463,132 @@ async def screenshot_tweet_playwright(tweet_data: dict) -> bytes | None:
 
 
 def screenshot_tweet_pillow(tweet_data: dict) -> bytes | None:
-    """Lightweight fallback using Pillow (no browser needed)."""
+    """Advanced Premium Pillow Compositor (looks like a native HTML tweet card)."""
     if not HAS_PILLOW:
         return None
     try:
+        import base64
         W, PAD = 640, 32
         theme = tweet_data.get("theme", "light")
-        bg    = (255, 255, 255) if theme == "light" else (25, 39, 52)
-        fg    = (15,  20,  25)  if theme == "light" else (255, 255, 255)
-        sub   = (83, 100, 113)  if theme == "light" else (136, 153, 166)
+        
+        # Premium curated color palette matching our HTML theme
+        if theme == "dark":
+            bg    = (25, 39, 52)
+            fg    = (255, 255, 255)
+            sub   = (136, 153, 166)
+            border = (56, 68, 77)
+        else:
+            bg    = (255, 255, 255)
+            fg    = (15, 20, 25)
+            sub   = (83, 100, 113)
+            border = (239, 243, 244)
 
-        # Wrap text
+        # 1. Decode and compose circular author avatar
+        avatar_img = None
+        if tweet_data.get("avatar_b64"):
+            try:
+                avatar_data = base64.b64decode(tweet_data["avatar_b64"])
+                avatar_img = Image.open(io.BytesIO(avatar_data)).convert("RGBA")
+                avatar_img = avatar_img.resize((52, 52), Image.Resampling.LANCZOS)
+                
+                # Make circular mask
+                mask = Image.new("L", (52, 52), 0)
+                mask_draw = ImageDraw.Draw(mask)
+                mask_draw.ellipse((0, 0, 52, 52), fill=255)
+                
+                circular_avatar = Image.new("RGBA", (52, 52), (0, 0, 0, 0))
+                circular_avatar.paste(avatar_img, (0, 0), mask=mask)
+                avatar_img = circular_avatar
+            except Exception as e:
+                print(f"[renderer] Pillow avatar composition error: {e}")
+
+        # 2. Decode and compose main tweet photo (if present)
+        photo_img = None
+        if tweet_data.get("photo_b64"):
+            try:
+                photo_data = base64.b64decode(tweet_data["photo_b64"])
+                photo_img = Image.open(io.BytesIO(photo_data)).convert("RGBA")
+                
+                # Scale photo dynamically to fit card body (width = 576px)
+                max_w = W - PAD * 2
+                w_pct = (max_w / float(photo_img.size[0]))
+                h_size = int((float(photo_img.size[1]) * float(w_pct)))
+                photo_img = photo_img.resize((max_w, h_size), Image.Resampling.LANCZOS)
+                
+                # Create rounded corners mask (12px radius)
+                mask = Image.new("L", photo_img.size, 0)
+                mask_draw = ImageDraw.Draw(mask)
+                mask_draw.rounded_rectangle((0, 0, photo_img.size[0], photo_img.size[1]), radius=12, fill=255)
+                
+                rounded_photo = Image.new("RGBA", photo_img.size, (0, 0, 0, 0))
+                rounded_photo.paste(photo_img, (0, 0), mask=mask)
+                photo_img = rounded_photo
+            except Exception as e:
+                print(f"[renderer] Pillow photo composition error: {e}")
+
+        # 3. Text Wrapping
         lines = textwrap.wrap(tweet_data.get("text", ""), width=52)
         line_h = 28
-        content_h = 80 + len(lines) * line_h + 60   # avatar + text + stats
+        
+        # Calculate dynamic canvas height
+        content_h = 80 + len(lines) * line_h + 30
+        if photo_img:
+            content_h += photo_img.size[1] + 20
+        content_h += 40  # space for footer stats
+        
         H = content_h + PAD * 2
 
+        # Create canvas
         img  = Image.new("RGB", (W, H), bg)
         draw = ImageDraw.Draw(img)
 
+        # Try to load high-quality default fonts if available, otherwise fallback
         try:
-            font_bold  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-            font_reg   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
-            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+            font_bold  = ImageFont.load_default()
+            font_reg   = ImageFont.load_default()
+            font_small = ImageFont.load_default()
         except Exception:
             font_bold = font_reg = font_small = ImageFont.load_default()
 
-        # Avatar circle placeholder
-        draw.ellipse([PAD, PAD, PAD + 52, PAD + 52], fill=(200, 200, 200))
+        # Draw Avatar
+        if avatar_img:
+            img.paste(avatar_img, (PAD, PAD), avatar_img)
+        else:
+            # Circle placeholder
+            draw.ellipse([PAD, PAD, PAD + 52, PAD + 52], fill=(200, 200, 200))
 
-        # Name & username
+        # Draw Name & Username
         x_text = PAD + 64
         draw.text((x_text, PAD + 4),  tweet_data.get("display_name", ""), fill=fg,  font=font_bold)
         draw.text((x_text, PAD + 26), f"@{tweet_data.get('username','')}", fill=sub, font=font_small)
 
-        # Tweet text
-        y = PAD + 70
+        # Draw Tweet Text
+        y = PAD + 74
         for line in lines:
             draw.text((PAD, y), line, fill=fg, font=font_reg)
             y += line_h
 
-        # Stats
+        # Draw Tweet Photo
+        if photo_img:
+            y += 10
+            img.paste(photo_img, (PAD, y), photo_img)
+            y += photo_img.size[1]
+
+        # Draw Premium Stats Footer (Curated Layout)
+        y += 18
+        draw.line([(PAD, y), (W - PAD, y)], fill=border, width=1)
         y += 12
-        stats = (f"♡ {tweet_data.get('likes', 0)}   "
-                 f"↻ {tweet_data.get('retweets', 0)}   "
-                 f"↩ {tweet_data.get('replies', 0)}   "
-                 f"· {tweet_data.get('date_str', '')}")
+        stats = (f"Likes: {tweet_data.get('likes', 0)}   |   "
+                 f"Retweets: {tweet_data.get('retweets', 0)}   |   "
+                 f"Replies: {tweet_data.get('replies', 0)}   |   "
+                 f"{tweet_data.get('date_str', '')}")
         draw.text((PAD, y), stats, fill=sub, font=font_small)
 
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue()
     except Exception as e:
-        print(f"[renderer] Pillow error: {e}")
+        print(f"[renderer] Premium Pillow compositor error: {e}")
         return None
 
 
