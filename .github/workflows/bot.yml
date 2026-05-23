@@ -41,6 +41,7 @@ jobs:
           TW_AUTH_TOKEN:        ${{ secrets.TW_AUTH_TOKEN }}
           TW_CT0:               ${{ secrets.TW_CT0 }}
           TW_COOKIES:           ${{ secrets.TW_COOKIES }}
+          TRACKED_ACCOUNTS:     ${{ secrets.TRACKED_ACCOUNTS }}
           MAX_FOLLOWING:        "300"
           TWEETS_PER_ACCOUNT:   "5"
           CARD_THEME:           "light"   # or "dark"
