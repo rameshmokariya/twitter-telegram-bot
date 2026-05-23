@@ -63,6 +63,11 @@ TW_USERNAME         = clean_env_var("TW_USERNAME")
 TW_PASSWORD         = clean_env_var("TW_PASSWORD")
 TW_EMAIL            = clean_env_var("TW_EMAIL")
 TW_EMAIL_PASSWORD   = clean_env_var("TW_EMAIL_PASSWORD")
+
+# Diagnostic logs to help identify typos/formatting errors in GitHub Secrets
+log.info("Telegram Channel ID Loaded: length=%d, start=%r, end=%r", len(TELEGRAM_CHANNEL_ID), TELEGRAM_CHANNEL_ID[:4] if TELEGRAM_CHANNEL_ID else "", TELEGRAM_CHANNEL_ID[-4:] if TELEGRAM_CHANNEL_ID else "")
+log.info("Telegram Bot Token Loaded: length=%d, start=%r, end=%r", len(TELEGRAM_BOT_TOKEN), TELEGRAM_BOT_TOKEN[:4] if TELEGRAM_BOT_TOKEN else "", TELEGRAM_BOT_TOKEN[-4:] if TELEGRAM_BOT_TOKEN else "")
+
 MAX_FOLLOWING       = int(os.environ.get("MAX_FOLLOWING", "300"))
 TWEETS_PER_ACCOUNT  = int(os.environ.get("TWEETS_PER_ACCOUNT", "5"))
 CARD_THEME          = os.environ.get("CARD_THEME", "light")   # "light" or "dark"
