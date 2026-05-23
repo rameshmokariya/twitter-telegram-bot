@@ -1,0 +1,17 @@
+# Virtual Environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Sensitive environment credentials
+.env
+
+# SQLite local databases (persisted safely via Actions cache)
+*.db
+sent_tweets.db
+accounts.db
+
+# System files
+.DS_Store
+Thumbs.db

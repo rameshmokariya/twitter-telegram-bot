@@ -1,0 +1,48 @@
+name: Twitter → Telegram Bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 min (GitHub Actions minimum)
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore tweet DB
+        uses: actions/cache@v4
+        with:
+          path: sent_tweets.db
+          key: sent-tweets-db-${{ github.run_id }}
+          restore-keys: sent-tweets-db-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: Run bot
+        env:
+          TELEGRAM_BOT_TOKEN:   ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID:  ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TW_USERNAME:          ${{ secrets.TW_USERNAME }}
+          TW_PASSWORD:          ${{ secrets.TW_PASSWORD }}
+          TW_EMAIL:             ${{ secrets.TW_EMAIL }}
+          TW_EMAIL_PASSWORD:    ${{ secrets.TW_EMAIL_PASSWORD }}
+          TW_AUTH_TOKEN:        ${{ secrets.TW_AUTH_TOKEN }}
+          TW_CT0:               ${{ secrets.TW_CT0 }}
+          TW_COOKIES:           ${{ secrets.TW_COOKIES }}
+          MAX_FOLLOWING:        "300"
+          TWEETS_PER_ACCOUNT:   "5"
+          CARD_THEME:           "light"   # or "dark"
+          INCLUDE_REPLIES:      "true"
+        run: python src/bot.py
