@@ -48,12 +48,21 @@ def patch_twscrape():
     except Exception as e:
         log.warning("Could not programmatically patch twscrape: %s", e)
 
-TELEGRAM_BOT_TOKEN  = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHANNEL_ID = os.environ["TELEGRAM_CHANNEL_ID"]
-TW_USERNAME         = os.environ["TW_USERNAME"]
-TW_PASSWORD         = os.environ["TW_PASSWORD"]
-TW_EMAIL            = os.environ.get("TW_EMAIL", "")
-TW_EMAIL_PASSWORD   = os.environ.get("TW_EMAIL_PASSWORD", "")
+def clean_env_var(name: str, default: str = "") -> str:
+    val = os.environ.get(name, default).strip()
+    if len(val) >= 2:
+        if val.startswith("'") and val.endswith("'"):
+            val = val[1:-1].strip()
+        elif val.startswith('"') and val.endswith('"'):
+            val = val[1:-1].strip()
+    return val
+
+TELEGRAM_BOT_TOKEN  = clean_env_var("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHANNEL_ID = clean_env_var("TELEGRAM_CHANNEL_ID")
+TW_USERNAME         = clean_env_var("TW_USERNAME")
+TW_PASSWORD         = clean_env_var("TW_PASSWORD")
+TW_EMAIL            = clean_env_var("TW_EMAIL")
+TW_EMAIL_PASSWORD   = clean_env_var("TW_EMAIL_PASSWORD")
 MAX_FOLLOWING       = int(os.environ.get("MAX_FOLLOWING", "300"))
 TWEETS_PER_ACCOUNT  = int(os.environ.get("TWEETS_PER_ACCOUNT", "5"))
 CARD_THEME          = os.environ.get("CARD_THEME", "light")   # "light" or "dark"
@@ -169,12 +178,7 @@ async def run_bot():
     # 2. Safely add/update our authenticated account using twscrape's official pool methods.
     # This automatically parses cookie strings, structures them correctly in the database,
     # and prevents column/schema mismatches!
-    cookies_str = os.environ.get('TW_COOKIES', '{}').strip()
-    if len(cookies_str) >= 2:
-        if cookies_str.startswith("'") and cookies_str.endswith("'"):
-            cookies_str = cookies_str[1:-1].strip()
-        elif cookies_str.startswith('"') and cookies_str.endswith('"'):
-            cookies_str = cookies_str[1:-1].strip()
+    cookies_str = clean_env_var("TW_COOKIES", "{}")
 
     await api.pool.delete_accounts(TW_USERNAME)
     await api.pool.add_account(
