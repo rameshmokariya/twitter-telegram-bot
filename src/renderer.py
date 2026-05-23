@@ -12,10 +12,12 @@ from pathlib import Path
 
 import httpx
 
+import os
+
 # ── Optional imports ──────────────────────────────────────────────────────────
 try:
     from playwright.async_api import async_playwright
-    HAS_PLAYWRIGHT = True
+    HAS_PLAYWRIGHT = os.environ.get("DISABLE_PLAYWRIGHT", "false").lower() != "true"
 except ImportError:
     HAS_PLAYWRIGHT = False
 
