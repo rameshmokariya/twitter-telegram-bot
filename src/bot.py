@@ -169,13 +169,20 @@ async def run_bot():
     # 2. Safely add/update our authenticated account using twscrape's official pool methods.
     # This automatically parses cookie strings, structures them correctly in the database,
     # and prevents column/schema mismatches!
+    cookies_str = os.environ.get('TW_COOKIES', '{}').strip()
+    if len(cookies_str) >= 2:
+        if cookies_str.startswith("'") and cookies_str.endswith("'"):
+            cookies_str = cookies_str[1:-1].strip()
+        elif cookies_str.startswith('"') and cookies_str.endswith('"'):
+            cookies_str = cookies_str[1:-1].strip()
+
     await api.pool.delete_accounts(TW_USERNAME)
     await api.pool.add_account(
         username=TW_USERNAME,
         password=TW_PASSWORD,
         email=TW_EMAIL or "",
         email_password=TW_EMAIL_PASSWORD or "",
-        cookies=os.environ.get('TW_COOKIES', '{}')
+        cookies=cookies_str
     )
     
     # 3. Force the account to be marked active and reset all rate-limit locks
