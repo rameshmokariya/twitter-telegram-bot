@@ -161,27 +161,38 @@ async def process_tweet(tweet, http: httpx.AsyncClient, api) -> bool:
 
 async def run_bot():
     patch_twscrape()
-    conn = init_db()
-    api  = API()
-    await api.pool.add_account(
-        username=TW_USERNAME,
-        password=TW_PASSWORD,
-        email=TW_EMAIL or None,
-        email_password=TW_EMAIL_PASSWORD or None,
-    )
-    # Inject cookies directly — bypasses Cloudflare-blocked login
-    import sqlite3 as _sq, json as _json
-    auth_token = os.environ.get('TW_AUTH_TOKEN', '')
-    ct0        = os.environ.get('TW_CT0', '')
+    
+    # 1. Pre-seed accounts.db with cookies and reset locks BEFORE instantiating the API!
+    import sqlite3 as _sq
     cookies = os.environ.get('TW_COOKIES', '{}')
     _conn = _sq.connect("accounts.db")
+    
+    # Ensure the twscrape accounts table is created with correct schema
+    _conn.execute("""
+        CREATE TABLE IF NOT EXISTS accounts (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            email TEXT,
+            email_password TEXT,
+            active INTEGER DEFAULT 1,
+            cookies TEXT,
+            locks TEXT DEFAULT '{}',
+            last_used TEXT
+        )
+    """)
+    
+    # Insert or update the account with active=1, cookies, and reset locks!
     _conn.execute(
-    "UPDATE accounts SET active=1, cookies=? WHERE username=?",
-    (cookies, TW_USERNAME)
+        "INSERT OR REPLACE INTO accounts (username, password, email, email_password, active, cookies, locks) VALUES (?, ?, ?, ?, 1, ?, '{}')",
+        (TW_USERNAME, TW_PASSWORD, TW_EMAIL or None, TW_EMAIL_PASSWORD or None, cookies)
     )
     _conn.commit()
     _conn.close()
-    log.info("Injected cookies for @%s — skipping login", TW_USERNAME)
+    log.info("Injected active cookies and reset locks for @%s — skipping login", TW_USERNAME)
+
+    # 2. NOW instantiate API so it loads the active, cookie-authenticated account correctly!
+    api  = API()
+    conn = init_db()
 
     log.info("Loading tracked accounts: %s", TRACKED_ACCOUNTS)
     following = []
