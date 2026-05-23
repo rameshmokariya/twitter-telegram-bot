@@ -181,7 +181,7 @@ async def run_bot():
         )
     """)
     
-    # Insert or update the account with active=1, cookies, and reset locks!
+    # Insert or JUST update the account with active=1, cookies, and reset locks!
     _conn.execute(
         "INSERT OR REPLACE INTO accounts (username, password, email, email_password, active, cookies, locks) VALUES (?, ?, ?, ?, 1, ?, '{}')",
         (TW_USERNAME, TW_PASSWORD, TW_EMAIL or None, TW_EMAIL_PASSWORD or None, cookies)
